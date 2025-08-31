@@ -7,13 +7,32 @@ supabase = create_client(url, key)
 
 
 
-def registrar_partido():
-    print("\n=== Registrar nuevo partido ===")
-    fecha = input("Fecha (YYYY-MM-DD, vacío para hoy): ") or str(date.today())
+def login():
+    print("=== LOGIN ===")
+    email = input("Email: ")
+    password = input("Contraseña: ")
+
+    try:
+        res = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        if res.user:
+            print(f"✅ Bienvenido {res.user.email}")
+            return res.user
+    except Exception as e:
+        print("Error en login", e)
+
+    return None
+
+
+def registrar_partido(user_id):
+    print("\n=== REGISTRAR PARTIDO ===")
+    fecha = input("Fecha (YYYY-MM-DD): ")
     lugar = input("Lugar: ")
-    equipos = input("Equipos (Ej: River vs Boca): ")
-    monto = float(input("Monto cobrado: "))
-    gastos = float(input("Gastos (si no hay, poné 0): "))
+    equipos = input("Equipos: ")
+    monto = float(input("Monto: "))
+    gastos = float(input("Gastos: "))
     pagado = input("¿Pagado? (s/n): ").lower() == "s"
     observaciones = input("Observaciones: ")
 
@@ -24,35 +43,52 @@ def registrar_partido():
         "monto": monto,
         "gastos": gastos,
         "pagado": pagado,
-        "observaciones": observaciones
+        "observaciones": observaciones,
+        "user_id": user_id
     }
 
     supabase.table("partidos").insert(data).execute()
-    print("✅ Partido registrado con éxito.\n")
+    print("✅ Partido registrado correctamente.")
 
-def listar_partidos():
-    print("\n=== Lista de partidos ===")
-    res = supabase.table("partidos").select("*").order("fecha").execute()
+
+def ver_partidos(user_id):
+    print("\n=== MIS PARTIDOS ===")
+    res = supabase.table("partidos").select("*").eq("user_id", user_id).execute()
+
+    if not res.data:
+        print("No tienes partidos cargados.")
+        return
+
     for p in res.data:
-        print(f"[{p['id']}] {p['fecha']} - {p['equipos']} en {p['lugar']} | ${p['monto']} | Pagado: {p['pagado']}")
+        print(f"- {p['fecha']} | {p['equipos']} | ${p['monto']} | Pagado: {p['pagado']}")
 
-def menu():
+
+def main():
+    user = login()
+    if not user:
+        print("No se pudo iniciar sesión. Saliendo...")
+        return
+
     while True:
-        print("\n--- Menú ---")
+        print("\n=== MENÚ PRINCIPAL ===")
         print("1. Registrar partido")
-        print("2. Ver partidos")
+        print("2. Ver mis partidos")
         print("3. Salir")
-        opcion = input("Elegí una opción: ")
+
+        opcion = input("Opción: ")
 
         if opcion == "1":
-            registrar_partido()
+            registrar_partido(user.id)
         elif opcion == "2":
-            listar_partidos()
+            ver_partidos(user.id)
         elif opcion == "3":
-            print("👋 Saliendo...")
+            print("Saliendo...")
             break
         else:
-            print("❌ Opción no válida.")
+            print("❌ Opción no válida")
+
 
 if __name__ == "__main__":
-    menu()
+    main()
+
+
